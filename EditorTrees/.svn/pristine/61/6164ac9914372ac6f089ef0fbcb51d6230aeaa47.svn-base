@@ -1,0 +1,507 @@
+package editortrees;
+
+// A node in a height-balanced binary tree with rank.
+// Except for the NULL_NODE (if you choose to use one), one node cannot
+// belong to two different trees.
+
+public class Node {
+	private static final Node NULLNODE = null;
+	public static Node NULL_NODE = new Node();
+	EditTree tree;
+	DisplayableNodeWrapper disobject;
+
+	enum Code {
+		SAME, LEFT, RIGHT;
+		// Used in the displayer and debug string
+		public String toString() {
+			switch (this) {
+			case LEFT:
+				return "/";
+			case SAME:
+				return "=";
+			case RIGHT:
+				return "\\";
+			default:
+				throw new IllegalStateException();
+			}
+		}
+	}
+
+	class Container {
+		boolean b;
+		Node n;
+
+		public Container(Node newNode, Boolean completed) {
+			this.n = newNode;
+		}
+
+		public boolean getvalue() {
+			return this.b;
+		}
+
+		public Node getNode() {
+			return this.n;
+		}
+	}
+	// The fields would normally be private, but for the purposes of this class,
+	// we want to be able to test the results of the algorithms in addition to
+	// the
+	// "publicly visible" effects
+
+	char element;
+	Node left, right; // subtrees
+	int rank; // inorder position of this node within its own subtree.
+	Code balance;
+	Node parent; // You may want this field.
+	// Feel free to add other fields that you find useful
+
+	// You will probably want to add several other methods
+	public Node(char ch, EditTree tr) {
+		this.rank = 0;
+		this.tree = tr;
+		this.element = ch;
+		this.balance = Code.SAME;
+		this.left = NULL_NODE;
+		this.right = NULL_NODE;
+		this.parent = NULL_NODE;
+		this.disobject = new DisplayableNodeWrapper(this);
+	}
+
+	public Node() {
+		this.element = ' ';
+		this.left = null;
+		this.right = null;
+		this.rank = -1;
+		this.balance = null;
+		this.parent = NULL_NODE;
+	}
+
+	public String toString() {
+		if (this.equals(NULL_NODE)) {
+			return "";
+		}
+		return this.left.toString() + this.element + "" + this.right.toString();
+	}
+
+	// For the following methods, you should fill in the details so that they
+	// work correctly
+
+	public int height() {
+		if (this == NULL_NODE) {
+			return -1;
+		}
+		return 1 + Math.max(left.height(), right.height());
+	}
+
+	public String toDebugString() {
+		if (this.equals(NULL_NODE)) {
+			return "";
+		}
+		return "" + this.element + this.rank + this.balance + ", "+this.left.toDebugString() + 
+				 this.right.toDebugString();
+	}
+
+	public int size() {
+		if (this.equals(NULL_NODE)) {
+			return 0;
+		}
+		return 1 + this.rank + this.right.size();
+	}
+
+	public Node singleLeft() {
+		Node parent = this;
+		Node child = this.right;
+		Node childleft = child.left;
+		Node grand = this.parent;
+		parent.balance = Code.SAME;
+		child.balance = Code.SAME;
+		child.left = parent;
+		if(this.checkLeftorRight()){
+			grand.left = child;
+		}else{
+			grand.right = child;
+		}
+		parent.parent = child;
+		parent.right = childleft;
+		childleft.parent = parent;
+		child.parent = grand;
+		//grand.right = child;
+
+		child.rank = parent.rank + child.rank + 1;
+		return child;
+	}
+
+	public Node singleRight() {
+		Node parent=this;
+		Node child=parent.left;
+		parent.left = child.right;
+		child.right = parent;
+		parent.balance = Code.SAME;
+		child.balance = Code.SAME;
+		if(this.checkLeftorRight()){
+			this.parent.left = child;
+		}else{
+			this.parent.right = child;
+		}
+		parent.rank -= child.rank + 1;
+		return child;
+	}
+
+	public Node doubleRight() {
+		Node grand = this.parent;
+		Node parent = this;
+		Node child1 = parent.left;
+		Node child2 = child1.right;
+		Node gC1 = child2.left;
+		Node gC2 = child2.right;
+		parent.left = gC2;
+		gC2.parent = parent;
+		child1.right = gC1;
+		gC1.parent = child1;
+		child2.left = child1;
+		child1.parent = child2;
+		child2.right = parent;
+		if(this.checkLeftorRight()){
+			grand.left = child2;
+		}else{
+			grand.right = child2;
+		}
+		parent.parent = child2;
+		child2.parent = grand;
+
+		if (child2.balance.equals(Code.LEFT)) {
+			parent.balance = Code.RIGHT;
+			child1.balance = Code.SAME;
+		} else if (child2.balance.equals(Code.RIGHT)) {
+			parent.balance = Code.SAME;
+			child1.balance = Code.LEFT;
+		} else {
+			parent.balance = Code.SAME;
+			child1.balance = Code.SAME;
+		}
+		parent.rank = parent.rank - child2.rank - child1.rank - 2;
+		child2.rank = child2.rank + child1.rank + 1;
+		child2.balance = Code.SAME;
+		//tree.n = tree.n + 2;
+		return child2;
+	}
+
+	public Node doubleleft() {
+		Node parent = this;
+		Node child1 = parent.right;
+		Node child2 = child1.left;
+		Node g1 = child2.left;
+		Node g2 = child2.right;
+		parent.right = g1;
+		child1.left = g2;
+		child2.left = parent;
+		child2.right = child1;
+		if (child2.balance == Code.LEFT) {
+			child1.balance = Code.RIGHT;
+			parent.balance = Code.SAME;
+		} else if (child2.balance == Code.RIGHT) {
+			parent.balance = Code.LEFT;
+			child1.balance = Code.SAME;
+		} else {
+			parent.balance = Code.SAME;
+			child1.balance = Code.SAME;
+		}
+		if(this.checkLeftorRight()){
+			this.parent.left = child2;
+		}else{
+			this.parent.right = child2;
+		}
+		child2.balance = Code.SAME;
+		child1.rank = child1.rank - child2.rank - 1;
+		child2.rank = child2.rank + parent.rank + 1;
+		return child2;
+	}
+
+	public int add(char ch, int pos, int sum) {
+		
+		if(pos <= this.rank+sum && this.left != NULL_NODE) {
+			this.rank++;
+			return this.left.add(ch, pos, sum);
+		}else if (pos <= this.rank+sum && this.left == NULL_NODE){
+			this.rank++;
+			this.left = new Node(ch, this.tree);
+			this.left.parent = this;
+		}else if (pos > this.rank+sum && this.right != NULL_NODE){
+			return this.right.add(ch, pos, sum+this.rank+1);
+		}else if (pos-1 ==  this.rank+sum && this.right == NULL_NODE ){
+			this.right = new Node(ch, this.tree);
+			this.right.parent = this;
+		}else {
+			throw new IndexOutOfBoundsException();
+		}Node currentNode = this;
+		while (currentNode != NULL_NODE) {
+			if(currentNode.balance == Code.SAME) {
+				if(currentNode.rank + sum >= pos) {
+					currentNode.balance = Code.LEFT;
+				}
+				else {
+					currentNode.balance = Code.RIGHT;
+				}
+			}
+			else if(currentNode.balance == Code.RIGHT && currentNode.rank + sum >= pos) {
+				currentNode.balance = Code.SAME;
+				break;
+			}
+			else if(currentNode.balance == Code.LEFT && currentNode.rank + sum < pos) {
+				currentNode.balance = Code.SAME;
+				break;
+			}
+			else {
+				if(currentNode.rank + sum >= pos && currentNode.left.rank + sum >= pos) {
+					currentNode.singleRight();
+					this.tree.n++;
+					break;
+				}
+				else if(currentNode.rank + sum < pos && currentNode.right != NULL_NODE && currentNode.right.rank + sum + currentNode.rank + 1 < pos) {
+					currentNode.singleLeft();
+					this.tree.n++;
+					break;
+				}
+				else if(currentNode.rank + sum >= pos && currentNode.left != NULL_NODE && currentNode.left.rank + sum < pos) {
+					currentNode.doubleRight();
+					this.tree.n+=2;
+					break;
+				}
+				else if(currentNode.rank + sum < pos && currentNode.right.rank + currentNode.right.rank + sum + currentNode.rank + 1 >= pos) {
+					currentNode.doubleleft();
+					this.tree.n+=2;
+					break;
+				}
+			}
+			if (currentNode.parent.right == currentNode) {
+				sum -= currentNode.parent.rank + 1;
+			}
+			currentNode = currentNode.parent;
+		}
+		return 0;
+
+	}
+
+	public char get(int pos, int rankSum) {
+		if(this == NULL_NODE) {
+			throw new IndexOutOfBoundsException();
+		}
+		if(pos < 0) {
+			throw new IndexOutOfBoundsException();
+		}
+		if(pos > this.rank + rankSum) {
+			return this.right.get(pos, rankSum + this.rank + 1);
+		}
+		if(pos < this.rank + rankSum) {
+			return this.left.get(pos, rankSum);
+		}
+		else {
+			return this.element;
+		}
+
+	}
+
+	// public Node add(char ch,EditTree ttt) {
+	// if(this == NULL_NODE){
+	// Node newNode = new Node(ch,ttt);
+	// ttt.setLast(newNode);
+	// return newNode;
+	// }
+	// if (this.right == NULL_NODE) {
+	// Node newNode = new Node(ch,ttt);
+	// this.right = newNode;
+	// this.right.parent=this;
+	// this.findUnbalance();
+	// ttt.setLast(newNode);
+	// System.out.println(tree.last.parent);
+	// }
+	// else {
+	// this.right = this.right.add(ch,ttt);
+	//
+	// }
+	// return this;
+	// }
+	//
+
+	int add(char c, EditTree tree) {
+		if (this.right != NULL_NODE) {
+			return this.right.add(c, tree);
+		} else {
+			this.right = new Node(c, tree);
+			this.right.parent = this;
+			Node currentNode = this;
+			while (currentNode != NULL_NODE) {
+				if (currentNode.balance == Code.SAME) {
+					currentNode.balance = Code.RIGHT;
+					currentNode = currentNode.parent;
+				} else if (currentNode.balance == Code.LEFT) {
+					currentNode.balance = Code.SAME;
+					break;
+				} else {
+					currentNode.singleLeft();
+					return 1;
+				}
+			}
+		}
+		return 0;
+	}
+
+//	public void reBalance() {
+//
+//		if (!this.equals(NULL_NODE)) {
+//			this.checkRotation();
+//		}
+//	}
+
+	public void findUnbalance() {
+		if (this.equals(NULL_NODE)) {
+			return;
+		}
+		if (this.balance == Code.SAME) {
+			this.balance = Code.RIGHT;
+			this.parent.findUnbalance();
+		}
+		if (this.balance == Code.LEFT) {
+			this.balance = Code.SAME;
+			return;
+		}
+		if (this.balance == Code.RIGHT) {
+			System.out.println("haha");
+			this.singleLeft();
+			return;
+		}
+
+	}
+
+//	public boolean checkRotation() {
+//		if (this.checkifLeft()) {
+//			if (this.changeBalance(true)) {
+//				if (this.balance.equals(Code.LEFT)) {
+//					if (this.left.balance.equals(Code.LEFT)) {
+//						this.singleRight();
+//					} else if (this.left.balance.equals(Code.RIGHT)) {
+//						this.doubleRight();
+//					}
+//
+//				} else {
+//					if (this.left.balance.equals(Code.LEFT)) {
+//						this.doubleleft();
+//					} else if (this.left.balance.equals(Code.RIGHT)) {
+//						this.singleLeft();
+//					}
+//
+//				}
+//			} else {
+//				return this.parent.checkRotation();
+//			}
+//
+//		} else {
+//			if (this.changeBalance(false)) {
+//				if (this.balance.equals(Code.LEFT)) {
+//					if (this.left.balance.equals(Code.LEFT)) {
+//						this.singleRight();
+//					} else if (this.left.balance.equals(Code.RIGHT)) {
+//						this.doubleRight();
+//					}
+//
+//				} else {
+//					if (this.right.balance.equals(Code.LEFT)) {
+//						this.doubleleft();
+//					} else if (this.right.balance.equals(Code.RIGHT)) {
+//						this.singleLeft();
+//					}
+//
+//				}
+//			} else {
+//				return this.parent.checkRotation();
+//			}
+//		}
+//		return false;
+//	}
+//
+	public boolean checkLeftorRight() {
+		if (this.parent.left == this) {
+			return true;
+		}
+		return false;
+
+	}
+//
+//	public boolean changeBalance(boolean m) {
+//		if (m) {
+//			if (this.balance.equals(Code.LEFT)) {
+//				return true;
+//			}
+//			if (this.balance.equals(Code.RIGHT)) {
+//				this.balance = Code.SAME;
+//				return false;
+//			} else {
+//				this.balance = Code.LEFT;
+//				return false;
+//			}
+//		} else {
+//			if (this.balance.equals(Code.LEFT)) {
+//				this.balance = Code.SAME;
+//				return false;
+//			}
+//			if (this.balance.equals(Code.RIGHT)) {
+//				return true;
+//			} else {
+//				this.balance = Code.RIGHT;
+//				return false;
+//			}
+//		}
+
+//	}
+
+	public DisplayableNodeWrapper getDisplayableNodePart() {
+		// TODO Auto-generated method stub.
+		return disobject;
+	}
+
+	public Node getParent() {
+		// TODO Auto-generated method stub.
+		return parent;
+	}
+
+	public boolean hasLeft() {
+		// TODO Auto-generated method stub.
+		return left != NULL_NODE;
+	}
+
+	public boolean hasRight() {
+		// TODO Auto-generated method stub.
+		return right != NULL_NODE;
+	}
+
+	public boolean hasParent() {
+		// TODO Auto-generated method stub.
+		return this.parent != NULL_NODE;
+	}
+
+	public Node getLeft() {
+		// TODO Auto-generated method stub.
+		return left;
+	}
+
+	public Code getBalance() {
+		// TODO Auto-generated method stub.
+		return this.balance;
+	}
+
+	public char getElement() {
+		// TODO Auto-generated method stub.
+		return this.element;
+	}
+
+	public String getRank() {
+		// TODO Auto-generated method stub.
+		return this.rank + "";
+	}
+
+	public Node getRight() {
+		// TODO Auto-generated method stub.
+		return right;
+	}
+
+}
